@@ -51,6 +51,38 @@ def get_users() -> list[dict]:
         return [dict(r) for r in rows]
 
 
+def get_user_by_id(user_id: str) -> dict | None:
+    with _session() as session:
+        row = session.execute(
+            text("SELECT user_id, username, email FROM users WHERE user_id = :uid"),
+            {"uid": user_id},
+        ).mappings().first()
+        return dict(row) if row else None
+
+
+def get_user_by_username(username: str) -> dict | None:
+    with _session() as session:
+        row = session.execute(
+            text("SELECT user_id, username, email, password_hash FROM users WHERE username = :un"),
+            {"un": username},
+        ).mappings().first()
+        return dict(row) if row else None
+
+
+def create_user(user_id: str, username: str, email: str, password_hash: str = "") -> str:
+    """Mirror a Supabase user into MySQL. user_id must be the Supabase-assigned UUID."""
+    with _session() as session:
+        session.execute(
+            text(
+                "INSERT INTO users (user_id, username, email, password_hash) "
+                "VALUES (:uid, :un, :em, :ph)"
+            ),
+            {"uid": user_id, "un": username, "em": email, "ph": password_hash},
+        )
+        session.commit()
+    return user_id
+
+
 def get_card_by_id(card_id: str) -> dict | None:
     with _session() as session:
         row = session.execute(

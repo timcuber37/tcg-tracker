@@ -80,12 +80,47 @@ def get_current_prices(card_ids: list[str]) -> dict[str, float | None]:
         conn.close()
 
 
-def get_catalog_set_names() -> list[str]:
-    """Return distinct set names from the synced catalog, alphabetically sorted."""
+def get_rare_card_ids(limit: int = 60) -> list[str]:
+    """Return a random sample of high-rarity pokewallet_ids for the rain animation."""
     conn = psycopg2.connect(config.POSTGRES_DSN)
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT DISTINCT set_name FROM catalog_embeddings ORDER BY set_name")
+            cur.execute(
+                """
+                SELECT pokewallet_id FROM catalog_embeddings
+                WHERE rarity ILIKE ANY(ARRAY[
+                    '%%Special Illustration Rare%%',
+                    '%%Hyper Rare%%',
+                    '%%Secret Rare%%',
+                    '%%Ultra Rare%%'
+                ])
+                ORDER BY RANDOM()
+                LIMIT %s
+                """,
+                (limit,),
+            )
+            return [r[0] for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def get_catalog_set_names(query: str = "") -> list[str]:
+    """Return distinct set names, optionally filtered to only sets containing query matches."""
+    conn = psycopg2.connect(config.POSTGRES_DSN)
+    try:
+        with conn.cursor() as cur:
+            if query:
+                cur.execute(
+                    """
+                    SELECT DISTINCT set_name FROM catalog_embeddings
+                    WHERE card_type NOT ILIKE 'Energy%%'
+                      AND card_name ILIKE %s
+                    ORDER BY set_name
+                    """,
+                    (f"%{query}%",),
+                )
+            else:
+                cur.execute("SELECT DISTINCT set_name FROM catalog_embeddings ORDER BY set_name")
             return [r[0] for r in cur.fetchall()]
     finally:
         conn.close()

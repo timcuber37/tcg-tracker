@@ -1,24 +1,65 @@
 {% extends "base.html" %}
+
+{% block search_prefix %}
+<select name="set" class="set-select" onchange="this.form.submit()">
+  <option value="">All Sets</option>
+  {% for s in set_names %}
+    <option value="{{ s }}" {% if s == set_name %}selected{% endif %}>{{ s }}</option>
+  {% endfor %}
+</select>
+{% endblock %}
+
 {% block content %}
 
-<!-- Set filter bar — always visible -->
-<form method="get" action="/" style="margin-bottom:28px;display:flex;gap:12px;align-items:center;">
-  {% if query %}<input type="hidden" name="q" value="{{ query }}" />{% endif %}
-  <select name="set" onchange="this.form.submit()"
-          style="flex:1;max-width:360px;padding:9px 12px;background:#141414;border:1px solid #262626;color:#fff;border-radius:8px;font-size:0.9rem;">
-    <option value="">— Browse by set —</option>
-    {% for s in set_names %}
-      <option value="{{ s }}" {% if s == set_name %}selected{% endif %}>{{ s }}</option>
-    {% endfor %}
-  </select>
-  {% if set_name %}
-    <a href="/?{% if query %}q={{ query }}{% endif %}" style="color:#888;font-size:0.85rem;text-decoration:none;">✕ Clear set</a>
-  {% endif %}
-</form>
-
 {% if not query and not set_name %}
+
+<!-- Card rain layer -->
+<div id="cardRainLayer" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:hidden;"></div>
+<style>
+@keyframes cardfall {
+  0%   { transform:translateY(-180px) rotate(var(--r)); opacity:0; }
+  8%   { opacity:var(--op); }
+  88%  { opacity:var(--op); }
+  100% { transform:translateY(110vh) rotate(calc(var(--r) + 22deg)); opacity:0; }
+}
+.rain-card { position:absolute;top:0;border-radius:6px;animation:cardfall linear forwards;will-change:transform,opacity; }
+</style>
+<script>
+(async function cardRain() {
+  const layer = document.getElementById('cardRainLayer');
+  if (!layer) return;
+  let ids = [];
+  try { ids = (await (await fetch('/api/rare-cards')).json()).slice(0, 25); } catch(e) { return; }
+  if (!ids.length) return;
+  let active = 0;
+  const MAX = 12;
+  function spawn() {
+    if (active >= MAX) return;
+    active++;
+    const id  = ids[Math.floor(Math.random() * ids.length)];
+    const w   = 72 + Math.floor(Math.random() * 34);
+    const dur = 8 + Math.random() * 7;
+    const rot = (Math.random() * 28 - 14).toFixed(1);
+    const op  = (0.45 + Math.random() * 0.25).toFixed(2);
+    const x   = Math.random() * Math.max(0, window.innerWidth - w);
+    const img = document.createElement('img');
+    img.src   = `/card-image/${id}`;
+    img.className = 'rain-card';
+    img.width = w;
+    img.style.left = x + 'px';
+    img.style.setProperty('--r',  rot + 'deg');
+    img.style.setProperty('--op', op);
+    img.style.animationDuration = dur + 's';
+    img.addEventListener('animationend', () => { img.remove(); active--; });
+    layer.appendChild(img);
+  }
+  function loop() { spawn(); setTimeout(loop, 1600 + Math.random() * 2600); }
+  [0, 900, 1800, 2700].forEach(d => setTimeout(spawn, d));
+  setTimeout(loop, 3800);
+})();
+</script>
   <div style="text-align:center;padding:60px 20px;">
-    <h1 style="font-size:2.4rem;font-weight:700;letter-spacing:-0.02em;">Find any Pokémon card.</h1>
+    <h1 style="font-size:2.4rem;font-weight:700;letter-spacing:-0.02em;">Find any Pokémon card!</h1>
     <p style="color:#888;margin-top:12px;font-size:1rem;">
       Search for cards from the Modern Era and add cards to your collection.
     </p>

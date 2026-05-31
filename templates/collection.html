@@ -1,4 +1,15 @@
 {% extends "base.html" %}
+
+{% block search_prefix %}
+<select class="set-select"
+        onchange="window.location='/collection'+(this.value?'?set='+encodeURIComponent(this.value):'')">
+  <option value="">All Sets</option>
+  {% for s in collection_sets %}
+    <option value="{{ s }}" {% if s == selected_set %}selected{% endif %}>{{ s }}</option>
+  {% endfor %}
+</select>
+{% endblock %}
+
 {% block content %}
 <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:24px;">
   <h1 style="margin:0;">{{ current_user.username }}'s Collection</h1>
