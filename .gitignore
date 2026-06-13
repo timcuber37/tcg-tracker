@@ -1,24 +1,25 @@
-# Environment / secrets
+# Environment / secrets (keep the .example templates)
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
 
-# Python
-venv/
-.venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.egg-info/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
+# Java / Gradle (backend)
+backend/build/
+backend/.gradle/
+backend/bin/
+
+# Node / Vite (frontend)
+frontend/node_modules/
+frontend/dist/
+
+# Image proxy cache
+backend/static/cards/
 
 # Logs and runtime artifacts
-logs/
 *.log
-.txt
 
 # IDE / editor
 .vscode/
@@ -33,7 +34,7 @@ Thumbs.db
 # Local-only assets and notes
 Rubric.pdf
 Project Idea.txt
-static/cards/
 
-# Throwaway / scratch scripts (anything prefixed with _)
+# Throwaway / scratch scripts
 _*.py
+_*.png

@@ -1,7 +1,9 @@
-# PokéCollect — full stack compose
-# Postgres is hosted on Supabase — no local postgres service needed.
-# Required secrets in .env: MYSQL_PASSWORD, POSTGRES_DSN, SUPABASE_URL, SUPABASE_KEY,
-#                           FLASK_SECRET_KEY, POKEWALLET_API_KEY
+# PokéCollect — Java/Spring backend + React (nginx) frontend.
+# Postgres is hosted on Supabase. One backend image runs as three roles
+# (web / consumer / sync) selected by SPRING_PROFILES_ACTIVE.
+#
+# Required in root .env (used both as container env and for compose substitution):
+#   MYSQL_PASSWORD, POSTGRES_DSN, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_KEY, POKEWALLET_API_KEY
 
 services:
 
@@ -24,14 +26,16 @@ services:
       start_period: 30s
     networks: [pokecollect]
 
+  # Kafka + Zookeeper hold only transient event-bus state (the read models in
+  # Cassandra and the MySQL source of truth persist). Their data is intentionally
+  # NOT persisted to a volume — persisting only part of Zookeeper's state across
+  # restarts causes Kafka's InconsistentClusterIdException.
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
     restart: unless-stopped
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-    volumes:
-      - zookeeper_data:/var/lib/zookeeper/data
     networks: [pokecollect]
 
   kafka:
@@ -46,8 +50,6 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-    volumes:
-      - kafka_data:/var/lib/kafka/data
     healthcheck:
       test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
       interval: 15s
@@ -72,8 +74,7 @@ services:
       start_period: 60s
     networks: [pokecollect]
 
-  # One-shot container: applies the Cassandra keyspace + table schema.
-  # Uses IF NOT EXISTS guards so it is safe to re-run on every `docker compose up`.
+  # One-shot: apply the Cassandra keyspace + tables (IF NOT EXISTS, safe to re-run).
   cassandra-init:
     image: cassandra:4
     restart: "no"
@@ -86,19 +87,21 @@ services:
       "until cqlsh cassandra -f /schema.cql; do echo 'CQL not ready, retrying...'; sleep 5; done"]
     networks: [pokecollect]
 
-  # ── App services (all built from the same Dockerfile) ──────────────────────
+  # ── Backend (one image, three roles) ───────────────────────────────────────
 
   web:
-    build: .
+    build: ./backend
+    image: pokecollect-backend:latest
     restart: unless-stopped
     ports:
-      - "5000:5000"
+      - "8080:8080"
     env_file: .env
     environment:
+      SPRING_PROFILES_ACTIVE: web
       MYSQL_HOST: mysql
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       CASSANDRA_HOSTS: cassandra
-      FLASK_DEBUG: "false"
+      IMAGE_CACHE_DIR: /app/static/cards
     volumes:
       - card_images:/app/static/cards
     depends_on:
@@ -110,15 +113,18 @@ services:
         condition: service_completed_successfully
     networks: [pokecollect]
 
-  cassandra-consumer:
-    build: .
-    command: python -m consumers.cassandra_consumer
+  consumer:
+    image: pokecollect-backend:latest
     restart: unless-stopped
     env_file: .env
     environment:
+      SPRING_PROFILES_ACTIVE: consumer
+      MYSQL_HOST: mysql
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       CASSANDRA_HOSTS: cassandra
     depends_on:
+      web:
+        condition: service_started
       kafka:
         condition: service_healthy
       cassandra-init:
@@ -126,15 +132,34 @@ services:
     networks: [pokecollect]
 
   sync:
-    build: .
-    command: python -m sync.api_sync
+    image: pokecollect-backend:latest
     restart: unless-stopped
     env_file: .env
     environment:
+      SPRING_PROFILES_ACTIVE: sync
+      MYSQL_HOST: mysql
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       CASSANDRA_HOSTS: cassandra
     depends_on:
+      web:
+        condition: service_started
       cassandra-init:
         condition: service_completed_successfully
+    networks: [pokecollect]
+
+  # ── Frontend (nginx serving the SPA + proxying to web) ─────────────────────
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_SUPABASE_URL: ${SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - web
     networks: [pokecollect]
 
 # ── Volumes ──────────────────────────────────────────────────────────────────
@@ -142,9 +167,7 @@ services:
 volumes:
   mysql_data:
   cassandra_data:
-  kafka_data:
-  zookeeper_data:
-  card_images:
+  card_images:       # persists the /card-image proxy cache across restarts
 
 # ── Network ──────────────────────────────────────────────────────────────────
 

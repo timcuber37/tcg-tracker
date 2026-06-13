@@ -1,0 +1,99 @@
+spring:
+  application:
+    name: poke-collect
+
+  # Load the project-root .env in local dev so the backend reads the same secrets
+  # as the Python app (MYSQL_PASSWORD, POSTGRES_DSN, SUPABASE_*). `optional:` means
+  # this is skipped in Docker, where the values come from the container environment.
+  config:
+    import: optional:file:../.env[.properties]
+
+  # Active profile selects the role this instance plays.
+  # web = REST API, consumer = Kafka listener, sync = scheduled catalog sync.
+  profiles:
+    active: web
+
+  # ── MySQL (write side) — primary datasource ────────────────────────────────
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DB:pokemon_tcg}
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none          # schema is managed by db/mysql_schema.sql
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  # ── Cassandra (read side) ──────────────────────────────────────────────────
+  cassandra:
+    contact-points: ${CASSANDRA_HOSTS:127.0.0.1}
+    port: ${CASSANDRA_PORT:9042}
+    keyspace-name: ${CASSANDRA_KEYSPACE:pokemon_tcg}
+    local-datacenter: datacenter1
+    schema-action: none
+
+  # ── Kafka (event bus) ──────────────────────────────────────────────────────
+  # Events are JSON strings on the wire (matching the Python app), so both ends
+  # use String (de)serializers and (de)serialize the body with Jackson by hand.
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: pokecollect
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+  # ── Security: validate Supabase-issued JWTs (ES256 via JWKS) ───────────────
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${SUPABASE_URL}/auth/v1/.well-known/jwks.json
+          jws-algorithms: ES256   # Supabase signs access tokens with ES256, not the RS256 default
+
+server:
+  port: 8080
+
+# Expose health for container probes.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# ── Supabase (used from Phase 2 onward) ──────────────────────────────────────
+supabase:
+  url: ${SUPABASE_URL:}
+  # Postgres catalog datasource (second JDBC datasource, wired in Phase 1)
+  postgres-dsn: ${POSTGRES_DSN:}
+
+# ── PokéWallet API (Phase 4) ─────────────────────────────────────────────────
+pokewallet:
+  api-key: ${POKEWALLET_API_KEY:}
+  base-url: https://api.pokewallet.io
+
+# ── Profile-specific overrides ───────────────────────────────────────────────
+# The consumer (@KafkaListener) and sync (@Scheduled) roles are headless — they
+# don't serve HTTP, so they skip the web server. Run them as separate instances:
+#   .\gradlew.bat bootRun --args='--spring.profiles.active=consumer'
+---
+spring:
+  config:
+    activate:
+      on-profile: consumer
+  main:
+    web-application-type: none
+---
+spring:
+  config:
+    activate:
+      on-profile: sync
+  main:
+    web-application-type: none
