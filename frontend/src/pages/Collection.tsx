@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { api, type CollectionResponse, cardImageUrl } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import Binder from '../components/Binder'
 
 export default function Collection() {
   const { user, username, loading: authLoading } = useAuth()
+  const [view, setView] = useState<'grid' | 'binder'>('grid')
   const [data, setData] = useState<CollectionResponse | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -35,7 +37,7 @@ export default function Collection() {
     <>
       <div className="collection-head">
         <h1 style={{ margin: 0 }}>{username}'s Collection</h1>
-        {data && cards.length > 0 && (
+        {view === 'grid' && data && cards.length > 0 && (
           <div className="collection-total">
             <div className="label">Total value</div>
             <div className="value">${data.totalValue.toFixed(2)}</div>
@@ -46,12 +48,19 @@ export default function Collection() {
         )}
       </div>
 
-      {!data && <div className="empty-state">Loading…</div>}
-      {data && cards.length === 0 && (
+      <div className="view-toggle">
+        <button className={view === 'grid' ? 'active' : ''} onClick={() => setView('grid')}>Collection</button>
+        <button className={view === 'binder' ? 'active' : ''} onClick={() => setView('binder')}>Binder</button>
+      </div>
+
+      {view === 'binder' && <Binder ownerName={username ?? undefined} />}
+
+      {view === 'grid' && !data && <div className="empty-state">Loading…</div>}
+      {view === 'grid' && data && cards.length === 0 && (
         <div className="empty-state">Your collection is empty. Search for cards to add.</div>
       )}
 
-      {cards.length > 0 && (
+      {view === 'grid' && cards.length > 0 && (
         <div className="card-grid">
           {cards.map((c) => (
             <div className="card" key={c.cardId}>

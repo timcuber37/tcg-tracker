@@ -35,3 +35,18 @@ CREATE TABLE IF NOT EXISTS cards_by_set (
     PRIMARY KEY (set_name, card_id)
 );
 -- No static seed data — cards_by_set is populated entirely by api_sync.py at runtime.
+
+-- Query: "Show me a user's binder, page by page"
+-- Partition key = user_id; clustered by (page_number, slot_index) so pages and
+-- the 9 pockets within each page come back already ordered. Denormalized with
+-- card display fields so the binder renders without a join.
+CREATE TABLE IF NOT EXISTS binder_by_user (
+    user_id     TEXT,
+    page_number INT,
+    slot_index  INT,
+    card_id     TEXT,
+    card_name   TEXT,
+    set_name    TEXT,
+    rarity      TEXT,
+    PRIMARY KEY (user_id, page_number, slot_index)
+) WITH CLUSTERING ORDER BY (page_number ASC, slot_index ASC);

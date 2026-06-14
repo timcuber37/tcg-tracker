@@ -2,6 +2,7 @@ package com.pokecollect.config;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -48,11 +49,17 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /** Allow the Vite dev origin to call the API cross-origin (prod SPA origin added later). */
+    // Allowed browser origins for the SPA: Vite dev (5173) and the nginx/Docker
+    // origin (3000) by default; override with CORS_ALLOWED_ORIGINS (comma-separated)
+    // to add a production domain. The browser sends an Origin header on POST even
+    // same-origin, so the serving origin must be listed or Spring's CORS filter 403s it.
+    @Value("${cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
+    private String allowedOrigins;
+
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        config.setAllowedOrigins(List.of(allowedOrigins.split("\\s*,\\s*")));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         config.setAllowCredentials(true);

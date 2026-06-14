@@ -42,4 +42,20 @@ CREATE TABLE collections (
     INDEX idx_user_collection (user_id)
 );
 
+-- Binder: a user's arranged cards, one row per filled pocket.
+-- UNIQUE(user_id, page_number, slot_index) enforces one card per pocket.
+CREATE TABLE binder_slots (
+    slot_id     CHAR(36)     NOT NULL DEFAULT (UUID()),
+    user_id     CHAR(36)     NOT NULL,
+    page_number INT          NOT NULL,
+    slot_index  INT          NOT NULL,
+    card_id     VARCHAR(255) NOT NULL,
+    placed_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (slot_id),
+    UNIQUE KEY uq_binder_slot (user_id, page_number, slot_index),
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (card_id) REFERENCES cards(card_id),
+    INDEX idx_binder_user (user_id)
+);
+
 -- No seed data. Users register via the app; cards are populated by sync/api_sync.py.

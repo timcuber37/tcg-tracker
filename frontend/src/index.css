@@ -128,6 +128,127 @@ h1 { font-size: 1.6rem; margin-bottom: 24px; font-weight: 600; }
 .collection-total .value { font-size: 1.6rem; font-weight: 700; color: #fff; }
 .collection-total .sub { color: #666; font-size: 0.75rem; margin-top: 2px; }
 
+/* ---- View toggle (Collection / Binder) ---- */
+.view-toggle { display: inline-flex; gap: 4px; background: #0a0a0a; border: 1px solid #262626; border-radius: 10px; padding: 4px; margin-bottom: 24px; }
+.view-toggle button { padding: 7px 16px; border: none; border-radius: 7px; background: transparent; color: #888; font-size: 0.9rem; cursor: pointer; }
+.view-toggle button.active { background: #1f1f1f; color: #fff; font-weight: 500; }
+
+/* ---- Binder ---- */
+.binder-wrap { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+.binder-flip { width: 100%; display: flex; justify-content: center; position: relative; }
+.binder-book { margin: 0 auto; }
+
+/* Crossfade the book in/out during cover open/close so it doesn't pop. */
+.binder-flip.revealing { animation: bookReveal 0.55s ease-out; }
+.binder-flip.hiding { animation: bookHide 0.55s ease-in forwards; }
+@keyframes bookReveal { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bookHide { from { opacity: 1; } to { opacity: 0; } }
+
+/* The cover flips away (open) / in (close) on top of the book during the transition. */
+.cover-overlay {
+  position: absolute; inset: 0; z-index: 5; pointer-events: none;
+  display: flex; justify-content: center; align-items: flex-start; perspective: 1800px;
+}
+
+/* Each leaf of the book holds a 3x3 page of pockets. */
+.binder-book .page {
+  width: 100%; height: 100%; box-sizing: border-box;
+  background: #141414; border: 1px solid #242424; padding: 14px; overflow: hidden;
+}
+.page-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+  gap: 8px; width: 100%; height: 100%;
+}
+
+.pocket { position: relative; border-radius: 6px; background: #0a0a0a; border: 1px solid #2a2a2a; overflow: hidden; }
+.pocket.empty {
+  border-style: dashed; display: flex; align-items: center; justify-content: center;
+  color: #444; font-size: 1.6rem; cursor: pointer; transition: border-color 0.15s, color 0.15s;
+}
+.pocket.empty:hover { border-color: #666; color: #888; }
+.pocket img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pocket .slot-remove {
+  position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(0,0,0,0.7); color: #fff; border: none; cursor: pointer; font-size: 0.9rem;
+  display: none; align-items: center; justify-content: center; line-height: 1; z-index: 3;
+}
+.pocket:hover .slot-remove { display: flex; }
+
+/* Cover leaf (front of the binder). Scoped under .binder-book to beat the
+   generic ".binder-book .page" background. */
+.binder-book .page-cover {
+  background: linear-gradient(145deg, #b91c1c 0%, #7f1d1d 55%, #450a0a 100%);
+  border-color: #5b1414;
+  position: relative;
+}
+/* Centering lives on an inner wrapper because react-pageflip sets inline styles
+   on the page element itself (which would override flex there). */
+.cover-inner {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 22px; text-align: center;
+}
+
+/* Standalone closed-cover screen (shown before the binder is opened). */
+.cover-stage { perspective: 1800px; display: flex; justify-content: center; padding: 4px; }
+.closed-cover {
+  width: 340px; height: 470px; border-radius: 4px; cursor: pointer; position: relative; overflow: hidden;
+  background: linear-gradient(145deg, #b91c1c 0%, #7f1d1d 55%, #450a0a 100%);
+  border: 1px solid #5b1414; box-shadow: 0 14px 44px rgba(0,0,0,0.55);
+  transform-origin: left center; transition: box-shadow 0.2s;
+}
+.closed-cover:hover { box-shadow: 0 16px 50px rgba(0,0,0,0.7); }
+.closed-cover::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 26px; background: rgba(0,0,0,0.28); }
+.closed-cover.flipping { animation: coverOpen 0.55s ease-in forwards; }
+@keyframes coverOpen { to { transform: rotateY(-155deg); opacity: 0; } }
+/* Closing mirrors opening: the cover swings back into place. */
+.closed-cover.closing { animation: coverClose 0.55s ease-out; }
+@keyframes coverClose { from { transform: rotateY(-155deg); opacity: 0; } to { transform: rotateY(0); opacity: 1; } }
+.page-cover::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 26px; background: rgba(0,0,0,0.28); }
+.cover-title { color: #fff; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; text-shadow: 0 2px 10px rgba(0,0,0,0.45); text-align: center; }
+.cover-hint { color: rgba(255,255,255,0.6); font-size: 0.78rem; }
+
+/* Inside front cover — the blank black leaf the first page rests against. */
+.binder-book .page-inside { background: #101010; position: relative; }
+.page-inside::after { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 22px; background: rgba(0,0,0,0.3); }
+
+/* Back cover (hard) so showCover doesn't harden a real content page. */
+.binder-book .page-back { background: linear-gradient(145deg, #7f1d1d 0%, #450a0a 100%); border-color: #5b1414; }
+.binder-book .page-back .cover-hint { color: rgba(255,255,255,0.45); }
+
+/* Subtle hover affordance: grab cursor + a faint folded-corner peel on the
+   page's outer bottom corner (left vs right via react-pageflip's classes). */
+.binder-book .page { cursor: grab; }
+.binder-book .page:active { cursor: grabbing; }
+.page-corner { position: absolute; bottom: 0; width: 30px; height: 30px; opacity: 0; transition: opacity 0.18s ease; pointer-events: none; z-index: 4; }
+.binder-book .page:hover .page-corner { opacity: 1; }
+.binder-book .page[class*="--right"] .page-corner { right: 0; background: linear-gradient(135deg, transparent 48%, rgba(255,255,255,0.18) 50%); }
+.binder-book .page[class*="--left"]  .page-corner { left: 0;  background: linear-gradient(225deg, transparent 48%, rgba(255,255,255,0.18) 50%); }
+
+/* Clean spine depth (replaces react-pageflip's drawn shadow): a soft inset
+   darkening toward the binding edge of each open leaf. */
+.binder-book .page[class*="--right"] { box-shadow: inset 16px 0 26px -18px rgba(0,0,0,0.75); }
+.binder-book .page[class*="--left"]  { box-shadow: inset -16px 0 26px -18px rgba(0,0,0,0.75); }
+
+.pokeball { width: 110px; height: 110px; border-radius: 50%; border: 5px solid #111; position: relative; overflow: hidden; background: #fff; box-shadow: 0 6px 22px rgba(0,0,0,0.45), inset 0 -8px 16px rgba(0,0,0,0.12); }
+.pokeball::before { content: ''; position: absolute; inset: 0 0 50% 0; background: #ef4444; }
+.pokeball::after  { content: ''; position: absolute; top: calc(50% - 4px); left: 0; right: 0; height: 8px; background: #111; }
+.pokeball-center { position: absolute; top: 50%; left: 50%; width: 28px; height: 28px; z-index: 2; transform: translate(-50%, -50%); background: #fff; border: 6px solid #111; border-radius: 50%; }
+
+.binder-nav { display: flex; align-items: center; gap: 18px; }
+.binder-nav .page-label { color: #777; font-size: 0.82rem; text-align: center; }
+
+/* ---- Slot picker modal ---- */
+.picker-overlay { display: flex; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; }
+.picker-dialog { background: #141414; border: 1px solid #262626; border-radius: 12px; padding: 24px; width: 720px; max-width: calc(100vw - 48px); max-height: 80vh; display: flex; flex-direction: column; }
+.picker-dialog h2 { margin-bottom: 16px; }
+.picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; overflow-y: auto; }
+.picker-card { cursor: pointer; border: 1px solid #1f1f1f; border-radius: 8px; padding: 6px; transition: border-color 0.15s, transform 0.15s; }
+.picker-card:hover { border-color: #666; transform: translateY(-2px); }
+.picker-card img { width: 100%; border-radius: 5px; }
+.picker-card .nm { font-size: 0.72rem; color: #aaa; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.picker-card .avail { font-size: 0.68rem; color: #4ade80; margin-top: 2px; }
+
 /* ---- Card rain ---- */
 #cardRainLayer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: hidden; }
 @keyframes cardfall {

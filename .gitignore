@@ -14,6 +14,7 @@ backend/bin/
 # Node / Vite (frontend)
 frontend/node_modules/
 frontend/dist/
+*.tsbuildinfo
 
 # Image proxy cache
 backend/static/cards/
@@ -35,6 +36,8 @@ Thumbs.db
 Rubric.pdf
 Project Idea.txt
 
-# Throwaway / scratch scripts
+# Throwaway / scratch scripts + captures
 _*.py
 _*.png
+_*.mjs
+_*.txt

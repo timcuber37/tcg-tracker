@@ -32,6 +32,14 @@ public class CassandraProjector {
     private static final String DELETE =
         "DELETE FROM collection_by_user WHERE user_id = ? AND collection_id = ?";
 
+    private static final String BINDER_INSERT =
+        "INSERT INTO binder_by_user " +
+        "(user_id, page_number, slot_index, card_id, card_name, set_name, rarity) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?)";
+
+    private static final String BINDER_DELETE =
+        "DELETE FROM binder_by_user WHERE user_id = ? AND page_number = ? AND slot_index = ?";
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final CqlSession cql;
@@ -47,6 +55,8 @@ public class CassandraProjector {
             switch (e.path("event_type").asText()) {
                 case "card_added_to_collection"     -> handleAdded(e);
                 case "card_removed_from_collection" -> handleRemoved(e);
+                case "card_placed_in_binder"        -> handleBinderPlaced(e);
+                case "card_removed_from_binder"     -> handleBinderRemoved(e);
                 default -> { /* ignore unrelated event types */ }
             }
         } catch (Exception ex) {
@@ -78,5 +88,28 @@ public class CassandraProjector {
             e.path("collection_id").asText()));
         log.info("Cassandra: removed collection {} for user {}",
             e.path("collection_id").asText(), e.path("user_id").asText());
+    }
+
+    private void handleBinderPlaced(JsonNode e) {
+        cql.execute(SimpleStatement.newInstance(BINDER_INSERT,
+            e.path("user_id").asText(),
+            e.path("page_number").asInt(),
+            e.path("slot_index").asInt(),
+            e.path("card_id").asText(),
+            e.path("card_name").asText(),
+            e.path("set_name").asText(),
+            e.path("rarity").asText()));
+        log.info("Cassandra: placed {} in binder p{}s{} for user {}",
+            e.path("card_name").asText(), e.path("page_number").asInt(),
+            e.path("slot_index").asInt(), e.path("user_id").asText());
+    }
+
+    private void handleBinderRemoved(JsonNode e) {
+        cql.execute(SimpleStatement.newInstance(BINDER_DELETE,
+            e.path("user_id").asText(),
+            e.path("page_number").asInt(),
+            e.path("slot_index").asInt()));
+        log.info("Cassandra: cleared binder p{}s{} for user {}",
+            e.path("page_number").asInt(), e.path("slot_index").asInt(), e.path("user_id").asText());
     }
 }

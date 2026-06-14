@@ -9,4 +9,5 @@ import com.pokecollect.command.domain.CollectionEntity;
 public interface CollectionRepository extends JpaRepository<CollectionEntity, String> {
     List<CollectionEntity> findByUserId(String userId);
     List<CollectionEntity> findByUserIdAndCardId(String userId, String cardId);
+    long countByUserIdAndCardId(String userId, String cardId);
 }

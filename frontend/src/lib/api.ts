@@ -67,6 +67,20 @@ export interface UserDto {
   email: string
 }
 
+export interface BinderSlotDto {
+  pageNumber: number
+  slotIndex: number
+  cardId: string
+  cardName: string
+  setName: string
+  rarity: string
+}
+
+export interface BinderResponse {
+  slots: BinderSlotDto[]
+  pageCount: number
+}
+
 export const cardImageUrl = (id: string, size: 'low' | 'high' = 'low') =>
   `${BASE.replace('/api', '')}/card-image/${id}?size=${size}`
 
@@ -97,4 +111,11 @@ export const api = {
     post<{ collectionId: string }>('/commands/add-copy', { pokewalletId, condition }),
   removeCard: (collectionId: string) =>
     post<void>('/commands/remove-card', { collectionId }),
+
+  // Binder
+  binder: () => get<BinderResponse>('/binder'),
+  placeCard: (cardId: string, pageNumber: number, slotIndex: number) =>
+    post<{ status: string }>('/binder/place', { cardId, pageNumber, slotIndex }),
+  removeSlot: (pageNumber: number, slotIndex: number) =>
+    post<void>('/binder/remove', { pageNumber, slotIndex }),
 }
