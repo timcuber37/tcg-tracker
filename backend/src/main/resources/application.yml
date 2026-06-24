@@ -1,6 +1,6 @@
 spring:
   application:
-    name: poke-collect
+    name: tcg-tracker
 
   # Load the project-root .env in local dev so the backend reads the same secrets
   # as the Python app (MYSQL_PASSWORD, POSTGRES_DSN, SUPABASE_*). `optional:` means
@@ -42,7 +42,7 @@ spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
-      group-id: pokecollect
+      group-id: tcgtracker
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer

@@ -84,6 +84,19 @@ export interface BinderResponse {
 export const cardImageUrl = (id: string, size: 'low' | 'high' = 'low') =>
   `${BASE.replace('/api', '')}/card-image/${id}?size=${size}`
 
+// Served from frontend/public. Shown when a card image 404s upstream (e.g. a new
+// set whose images PokéWallet hasn't uploaded yet).
+export const CARD_BACK_URL = '/card-back.svg'
+
+// onError fallback: swap a failed card image for the card-back placeholder once
+// (the data-flag guards against an infinite loop if the placeholder ever fails).
+export function onCardImageError(e: { currentTarget: HTMLImageElement }) {
+  const img = e.currentTarget
+  if (img.dataset.fallback) return
+  img.dataset.fallback = '1'
+  img.src = CARD_BACK_URL
+}
+
 export const api = {
   // Read (public)
   search: (q: string, set: string, page: number) =>

@@ -1,8 +1,10 @@
-# PokéCollect
+# TCGTracker
 
 A Pokémon Trading Card Game collection manager built around a CQRS architecture. Search the modern card catalog, build a personal collection, and track live TCGPlayer market prices.
 
 A **Java 23 + Spring Boot** backend (REST API) with a **React + TypeScript** single-page frontend, demonstrating distributed-systems patterns: command/query separation, an event-driven write side, and multiple specialised read stores.
+
+> **Disclaimer:** This is an unofficial, non-commercial fan project for educational purposes. It is **not affiliated with, endorsed by, or sponsored by** Nintendo, The Pokémon Company, Game Freak, or Creatures Inc. *Pokémon* and all related names, logos, and the Poké Ball are trademarks and copyrights of their respective owners. Card images and pricing are retrieved at runtime from the third-party PokéWallet API and are not redistributed by this repository. The [MIT license](LICENSE) below covers **only the original source code in this repository** — it does not grant any rights to Pokémon intellectual property. If you fork or deploy this, supply your own API keys and do not use it commercially.
 
 ## Architecture
 

@@ -1,4 +1,4 @@
-# PokéCollect — Python → Java/Spring Migration Plan
+# TCGTracker — Python → Java/Spring Migration Plan
 
 Reference document for porting the app from **Python/Flask** to **Java 23 + Spring Boot 4.1**.
 The Python app (repo root) shares the same infrastructure (MySQL, Cassandra, Supabase Postgres, Kafka).

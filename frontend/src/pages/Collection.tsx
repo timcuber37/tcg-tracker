@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { api, type CollectionResponse, cardImageUrl } from '../lib/api'
+import { api, type CollectionResponse, cardImageUrl, onCardImageError } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import Binder from '../components/Binder'
 
 export default function Collection() {
   const { user, username, loading: authLoading } = useAuth()
   const [view, setView] = useState<'grid' | 'binder'>('grid')
+  const [sortKey, setSortKey] = useState<'name' | 'value'>('name')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [data, setData] = useState<CollectionResponse | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -33,6 +35,28 @@ export default function Collection() {
 
   const cards = data?.cards ?? []
 
+  // Clicking the active field flips direction; switching fields picks a sensible
+  // default (Name A→Z, Value high→low).
+  const setSort = (key: 'name' | 'value') => {
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortKey(key); setSortDir(key === 'value' ? 'desc' : 'asc') }
+  }
+
+  const sortedCards = [...cards].sort((a, b) => {
+    if (sortKey === 'value') {
+      const av = a.marketPriceUsd, bv = b.marketPriceUsd
+      // Unpriced cards always sort to the end, regardless of direction.
+      if (av == null && bv == null) return a.cardName.localeCompare(b.cardName)
+      if (av == null) return 1
+      if (bv == null) return -1
+      return sortDir === 'asc' ? av - bv : bv - av
+    }
+    const cmp = a.cardName.localeCompare(b.cardName)
+    return sortDir === 'asc' ? cmp : -cmp
+  })
+
+  const arrow = (key: 'name' | 'value') => (sortKey === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '')
+
   return (
     <>
       <div className="collection-head">
@@ -48,12 +72,24 @@ export default function Collection() {
         )}
       </div>
 
-      <div className="view-toggle">
-        <button className={view === 'grid' ? 'active' : ''} onClick={() => setView('grid')}>Collection</button>
-        <button className={view === 'binder' ? 'active' : ''} onClick={() => setView('binder')}>Binder</button>
+      <div className="collection-controls">
+        <div className="view-toggle">
+          <button className={view === 'grid' ? 'active' : ''} onClick={() => setView('grid')}>Collection</button>
+          <button className={view === 'binder' ? 'active' : ''} onClick={() => setView('binder')}>Binder</button>
+        </div>
+
+        {view === 'grid' && cards.length > 1 && (
+          <div className="sort-group">
+            <span className="sort-label">Sort</span>
+            <div className="view-toggle">
+              <button className={sortKey === 'name' ? 'active' : ''} onClick={() => setSort('name')}>Name{arrow('name')}</button>
+              <button className={sortKey === 'value' ? 'active' : ''} onClick={() => setSort('value')}>Value{arrow('value')}</button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {view === 'binder' && <Binder ownerName={username ?? undefined} />}
+      {view === 'binder' && <Binder />}
 
       {view === 'grid' && !data && <div className="empty-state">Loading…</div>}
       {view === 'grid' && data && cards.length === 0 && (
@@ -62,10 +98,10 @@ export default function Collection() {
 
       {view === 'grid' && cards.length > 0 && (
         <div className="card-grid">
-          {cards.map((c) => (
+          {sortedCards.map((c) => (
             <div className="card" key={c.cardId}>
               <img src={cardImageUrl(c.cardId)} alt={c.cardName} loading="lazy"
-                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                   onError={onCardImageError} />
               <div className="card-name">{c.cardName}</div>
               <div className="card-meta">{c.setName}</div>
               <span className="badge">{c.rarity}</span>

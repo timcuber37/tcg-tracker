@@ -1,11 +1,22 @@
 import { useEffect, useRef } from 'react'
-import { api, cardImageUrl } from '../lib/api'
+import { api, cardImageUrl, CARD_BACK_URL } from '../lib/api'
 
 /**
- * Occasional rainfall of high-rarity card images across the screen.
- * Uses a small pool (10 ids) so the browser caches each image after first load,
- * avoiding repeated /card-image calls.
+ * Occasional rainfall of card images across the screen. Prefers the signed-in
+ * user's own collection; falls back to high-rarity cards when the collection is
+ * empty or the user isn't signed in. Caps the pool to a small set so the browser
+ * caches each image after first load, avoiding repeated /card-image calls.
  */
+async function resolvePool(): Promise<string[]> {
+  try {
+    const col = await api.collection()
+    const ids = col.cards.map((c) => c.cardId)
+    if (ids.length) return ids.slice(0, 16)
+  } catch { /* not signed in or request failed → fall back below */ }
+  const rare = await api.rareCards()
+  return rare.slice(0, 10)
+}
+
 export default function CardRain() {
   const layerRef = useRef<HTMLDivElement>(null)
 
@@ -17,8 +28,7 @@ export default function CardRain() {
     const timers: number[] = []
     const MAX = 12
 
-    api.rareCards().then((all) => {
-      const ids = all.slice(0, 10)
+    resolvePool().then((ids) => {
       if (!ids.length || stopped) return
 
       const spawn = () => {
@@ -32,6 +42,7 @@ export default function CardRain() {
         const x = Math.random() * Math.max(0, window.innerWidth - w)
         const img = document.createElement('img')
         img.src = cardImageUrl(id)
+        img.addEventListener('error', () => { if (!img.dataset.fallback) { img.dataset.fallback = '1'; img.src = CARD_BACK_URL } })
         img.className = 'rain-card'
         img.width = w
         img.style.left = `${x}px`

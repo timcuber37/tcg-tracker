@@ -42,7 +42,7 @@ export default function TopBar({ onSignIn }: { onSignIn: () => void }) {
   return (
     <header className="topbar">
       <div className="brand-wrap">
-        <Link className="brand" to="/">Poké<span className="brand-dot">·</span>Collect</Link>
+        <Link className="brand" to="/">TCG<span className="brand-dot">·</span>Tracker</Link>
       </div>
 
       <form className="search-form" onSubmit={(e) => { e.preventDefault(); go(query.trim(), urlSet) }} role="search">

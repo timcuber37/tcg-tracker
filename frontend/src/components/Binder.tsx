@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import HTMLFlipBook from 'react-pageflip'
-import { api, type BinderResponse, type CollectionCardDto, cardImageUrl } from '../lib/api'
+import { api, type BinderResponse, type CollectionCardDto, cardImageUrl, onCardImageError } from '../lib/api'
 
 const SLOTS_PER_PAGE = 9
 
@@ -8,16 +8,11 @@ const SLOTS_PER_PAGE = 9
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const FlipBook: any = HTMLFlipBook
 
-export default function Binder({ ownerName }: { ownerName?: string }) {
+export default function Binder() {
   const [binder, setBinder] = useState<BinderResponse | null>(null)
   const [picker, setPicker] = useState<{ page: number; slot: number } | null>(null)
   const [owned, setOwned] = useState<CollectionCardDto[]>([])
   const [busy, setBusy] = useState(false)
-  // Cover is its own screen (NOT a flip-book page) — using react-pageflip's
-  // showCover forces hard cover leaves that render a stray page outside the binder.
-  const [coverOpen, setCoverOpen] = useState(false)
-  const [transitioning, setTransitioning] = useState<'open' | 'close' | null>(null)
-  const [currentPage, setCurrentPage] = useState(0)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const bookRef = useRef<any>(null)
 
@@ -53,23 +48,9 @@ export default function Binder({ ownerName }: { ownerName?: string }) {
   const slotAt = (page: number, i: number) =>
     binder?.slots.find((s) => s.pageNumber === page && s.slotIndex === i) ?? null
 
-  // Open: mount the book immediately and crossfade it in while the cover flips
-  // away on top (no empty gap, no pop).
-  const openCover = () => {
-    setCoverOpen(true)
-    setTransitioning('open')
-    setTimeout(() => setTransitioning(null), 560)
-  }
-  // Going back past the first spread closes the binder: the book fades out while
-  // the cover flips back in over it (mirror of opening).
-  const flipPrev = () => {
-    if (currentPage <= 0) {
-      setTransitioning('close')
-      setTimeout(() => { setCoverOpen(false); setTransitioning(null) }, 560)
-    } else {
-      bookRef.current?.pageFlip()?.flipPrev()
-    }
-  }
+  // The cover is the first leaf of the flip book (showCover), so it opens/closes
+  // by dragging exactly like the inner pages; the nav buttons just delegate.
+  const flipPrev = () => bookRef.current?.pageFlip()?.flipPrev()
   const flipNext = () => bookRef.current?.pageFlip()?.flipNext()
 
   // Render enough content pages to cover what's used plus one blank page to fill.
@@ -84,7 +65,7 @@ export default function Binder({ ownerName }: { ownerName?: string }) {
           return (
             <div className="pocket" key={i}>
               <img src={cardImageUrl(slot.cardId)} alt={slot.cardName} loading="lazy"
-                   onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden' }} />
+                   onError={onCardImageError} />
               <button className="slot-remove" title="Remove from binder" disabled={busy}
                       onClick={(e) => { e.stopPropagation(); mutate(() => api.removeSlot(page, i)) }}>×</button>
             </div>
@@ -98,44 +79,29 @@ export default function Binder({ ownerName }: { ownerName?: string }) {
     </div>
   )
 
-  // No cover/back-cover leaves and no showCover — only soft pages. First spread is
-  // the blank inside (left) + page 0 (right), then content pages pair up.
+  // No front cover — the binder opens straight to the first spread: a blank inside
+  // cover (left) + page 1 (right), then 3x3 content pages, ending on a rigid back
+  // cover. The back cover keeps data-density="hard" (page-flip reads rigidity from
+  // that attribute on every (re)load, so it survives the React wrapper's
+  // updateFromHtml on each re-render).
   const pages = [
     <div className="page page-inside" key="inside"><span className="page-corner" /></div>,
     ...Array.from({ length: pageCount }, (_, p) => (
       <div className="page" key={p}>{renderGrid(p)}<span className="page-corner" /></div>
     )),
+    <div className="page page-back" data-density="hard" key="back">
+      <div className="cover-inner"><div className="pokeball"><div className="pokeball-center" /></div></div>
+    </div>,
   ]
 
-  const coverFace = (
-    <div className="cover-inner">
-      <div className="pokeball"><div className="pokeball-center" /></div>
-      <div className="cover-title">{ownerName ? `${ownerName}'s Binder` : 'My Binder'}</div>
-      <div className="cover-hint">Click to open →</div>
-    </div>
-  )
-
-  // ---- Closed cover screen (only when fully closed, not mid-transition) ----
-  if (!coverOpen && !transitioning) {
-    return (
-      <div className="binder-wrap">
-        <div className="cover-stage">
-          <div className="closed-cover" onClick={openCover}>{coverFace}</div>
-        </div>
-      </div>
-    )
-  }
-
-  // ---- Open binder (flip book) with the cover crossfading over it on transitions ----
-  const bookAnim = transitioning === 'open' ? 'revealing' : transitioning === 'close' ? 'hiding' : ''
   return (
     <div className="binder-wrap">
-      <div className={`binder-flip ${bookAnim}`}>
+      <div className="binder-flip">
         {binder ? (
           <FlipBook
             ref={bookRef}
-            width={340}
-            height={470}
+            width={420}
+            height={580}
             size="fixed"
             showCover={false}
             usePortrait={false}
@@ -148,18 +114,11 @@ export default function Binder({ ownerName }: { ownerName?: string }) {
             showPageCorners={false}
             mobileScrollSupport={false}
             className="binder-book"
-            onFlip={(e: { data: number }) => setCurrentPage(e.data)}
           >
             {pages}
           </FlipBook>
         ) : (
           <div className="empty-state">Loading binder…</div>
-        )}
-
-        {transitioning && (
-          <div className="cover-overlay">
-            <div className={`closed-cover ${transitioning === 'open' ? 'flipping' : 'closing'}`}>{coverFace}</div>
-          </div>
         )}
       </div>
 
@@ -181,7 +140,7 @@ export default function Binder({ ownerName }: { ownerName?: string }) {
                   {avail.map((c) => (
                     <div className="picker-card" key={c.cardId} onClick={() => placeCard(c.cardId)}>
                       <img src={cardImageUrl(c.cardId)} alt={c.cardName} loading="lazy"
-                           onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden' }} />
+                           onError={onCardImageError} />
                       <div className="nm">{c.cardName}</div>
                       <div className="avail">{availableOf(c)} available</div>
                     </div>

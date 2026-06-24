@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { type CardDto, cardImageUrl } from '../lib/api'
+import { type CardDto, cardImageUrl, onCardImageError } from '../lib/api'
 
 function CardTile({ card, onAdd }: { card: CardDto; onAdd?: (c: CardDto) => Promise<void> }) {
   const [state, setState] = useState<'idle' | 'busy' | 'added'>('idle')
@@ -18,7 +18,7 @@ function CardTile({ card, onAdd }: { card: CardDto; onAdd?: (c: CardDto) => Prom
   return (
     <div className="card">
       <img src={cardImageUrl(card.pokewalletId)} alt={card.cardName} loading="lazy"
-           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+           onError={onCardImageError} />
       <div className="card-name">{card.cardName}</div>
       <div className="card-meta">{card.setName}</div>
       <span className="badge">{card.rarity}</span>

@@ -1,1 +1,1 @@
-rootProject.name = "poke-collect"
+rootProject.name = "tcg-tracker"

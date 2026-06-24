@@ -32,7 +32,7 @@ a { color: inherit; }
 }
 .search-form:focus-within { border-color: #555; }
 .search-form input {
-  flex: 1; padding: 10px 0; background: transparent; border: none; outline: none;
+  flex: 1; min-width: 0; padding: 10px 0 10px 12px; background: transparent; border: none; outline: none;
   color: #fff; font-size: 0.95rem;
 }
 .search-form input::placeholder { color: #666; }
@@ -40,8 +40,8 @@ a { color: inherit; }
 .search-form button:hover { color: #fff; }
 .set-select {
   background: transparent; border: none; border-right: 1px solid #2a2a2a;
-  color: #aaa; font-size: 0.85rem; padding: 10px 10px 10px 4px;
-  outline: none; cursor: pointer; max-width: 170px; flex-shrink: 0;
+  color: #aaa; font-size: 0.85rem; padding: 10px 6px 10px 2px;
+  outline: none; cursor: pointer; max-width: 150px; flex-shrink: 0;
 }
 .set-select:focus { color: #fff; }
 .set-select option { background: #141414; color: #fff; }
@@ -128,27 +128,22 @@ h1 { font-size: 1.6rem; margin-bottom: 24px; font-weight: 600; }
 .collection-total .value { font-size: 1.6rem; font-weight: 700; color: #fff; }
 .collection-total .sub { color: #666; font-size: 0.75rem; margin-top: 2px; }
 
-/* ---- View toggle (Collection / Binder) ---- */
+/* ---- View toggle (Collection / Binder) + sort controls ---- */
+.collection-controls { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+.collection-controls .view-toggle { margin-bottom: 0; }
+.sort-group { display: inline-flex; align-items: center; gap: 8px; }
+.sort-label { color: #888; font-size: 0.85rem; }
 .view-toggle { display: inline-flex; gap: 4px; background: #0a0a0a; border: 1px solid #262626; border-radius: 10px; padding: 4px; margin-bottom: 24px; }
 .view-toggle button { padding: 7px 16px; border: none; border-radius: 7px; background: transparent; color: #888; font-size: 0.9rem; cursor: pointer; }
 .view-toggle button.active { background: #1f1f1f; color: #fff; font-weight: 500; }
 
 /* ---- Binder ---- */
 .binder-wrap { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
-.binder-flip { width: 100%; display: flex; justify-content: center; position: relative; }
+/* Fixed-size clipping viewport for the open spread (2 * 420 wide, 580 tall).
+   Clipping the page-turn sweep stops it overflowing the document and spawning
+   flickering scrollbars, which were shifting the centered book and causing jitter. */
+.binder-flip { position: relative; width: 840px; max-width: 100%; height: 580px; overflow: hidden; }
 .binder-book { margin: 0 auto; }
-
-/* Crossfade the book in/out during cover open/close so it doesn't pop. */
-.binder-flip.revealing { animation: bookReveal 0.55s ease-out; }
-.binder-flip.hiding { animation: bookHide 0.55s ease-in forwards; }
-@keyframes bookReveal { from { opacity: 0; } to { opacity: 1; } }
-@keyframes bookHide { from { opacity: 1; } to { opacity: 0; } }
-
-/* The cover flips away (open) / in (close) on top of the book during the transition. */
-.cover-overlay {
-  position: absolute; inset: 0; z-index: 5; pointer-events: none;
-  display: flex; justify-content: center; align-items: flex-start; perspective: 1800px;
-}
 
 /* Each leaf of the book holds a 3x3 page of pockets. */
 .binder-book .page {
@@ -174,47 +169,20 @@ h1 { font-size: 1.6rem; margin-bottom: 24px; font-weight: 600; }
 }
 .pocket:hover .slot-remove { display: flex; }
 
-/* Cover leaf (front of the binder). Scoped under .binder-book to beat the
-   generic ".binder-book .page" background. */
-.binder-book .page-cover {
-  background: linear-gradient(145deg, #b91c1c 0%, #7f1d1d 55%, #450a0a 100%);
-  border-color: #5b1414;
-  position: relative;
-}
-/* Centering lives on an inner wrapper because react-pageflip sets inline styles
-   on the page element itself (which would override flex there). */
+/* Centers the back cover's Pokéball. On its own wrapper because react-pageflip
+   sets inline styles on the leaf element itself (which would override flex there). */
 .cover-inner {
   width: 100%; height: 100%;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 22px; text-align: center;
 }
 
-/* Standalone closed-cover screen (shown before the binder is opened). */
-.cover-stage { perspective: 1800px; display: flex; justify-content: center; padding: 4px; }
-.closed-cover {
-  width: 340px; height: 470px; border-radius: 4px; cursor: pointer; position: relative; overflow: hidden;
-  background: linear-gradient(145deg, #b91c1c 0%, #7f1d1d 55%, #450a0a 100%);
-  border: 1px solid #5b1414; box-shadow: 0 14px 44px rgba(0,0,0,0.55);
-  transform-origin: left center; transition: box-shadow 0.2s;
-}
-.closed-cover:hover { box-shadow: 0 16px 50px rgba(0,0,0,0.7); }
-.closed-cover::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 26px; background: rgba(0,0,0,0.28); }
-.closed-cover.flipping { animation: coverOpen 0.55s ease-in forwards; }
-@keyframes coverOpen { to { transform: rotateY(-155deg); opacity: 0; } }
-/* Closing mirrors opening: the cover swings back into place. */
-.closed-cover.closing { animation: coverClose 0.55s ease-out; }
-@keyframes coverClose { from { transform: rotateY(-155deg); opacity: 0; } to { transform: rotateY(0); opacity: 1; } }
-.page-cover::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 26px; background: rgba(0,0,0,0.28); }
-.cover-title { color: #fff; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; text-shadow: 0 2px 10px rgba(0,0,0,0.45); text-align: center; }
-.cover-hint { color: rgba(255,255,255,0.6); font-size: 0.78rem; }
-
 /* Inside front cover — the blank black leaf the first page rests against. */
 .binder-book .page-inside { background: #101010; position: relative; }
 .page-inside::after { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 22px; background: rgba(0,0,0,0.3); }
 
-/* Back cover (hard) so showCover doesn't harden a real content page. */
+/* Back cover — a rigid red leaf (data-density="hard") that ends the binder. */
 .binder-book .page-back { background: linear-gradient(145deg, #7f1d1d 0%, #450a0a 100%); border-color: #5b1414; }
-.binder-book .page-back .cover-hint { color: rgba(255,255,255,0.45); }
 
 /* Subtle hover affordance: grab cursor + a faint folded-corner peel on the
    page's outer bottom corner (left vs right via react-pageflip's classes). */
@@ -230,10 +198,10 @@ h1 { font-size: 1.6rem; margin-bottom: 24px; font-weight: 600; }
 .binder-book .page[class*="--right"] { box-shadow: inset 16px 0 26px -18px rgba(0,0,0,0.75); }
 .binder-book .page[class*="--left"]  { box-shadow: inset -16px 0 26px -18px rgba(0,0,0,0.75); }
 
-.pokeball { width: 110px; height: 110px; border-radius: 50%; border: 5px solid #111; position: relative; overflow: hidden; background: #fff; box-shadow: 0 6px 22px rgba(0,0,0,0.45), inset 0 -8px 16px rgba(0,0,0,0.12); }
+.pokeball { width: 136px; height: 136px; border-radius: 50%; border: 6px solid #111; position: relative; overflow: hidden; background: #fff; box-shadow: 0 6px 22px rgba(0,0,0,0.45), inset 0 -8px 16px rgba(0,0,0,0.12); }
 .pokeball::before { content: ''; position: absolute; inset: 0 0 50% 0; background: #ef4444; }
 .pokeball::after  { content: ''; position: absolute; top: calc(50% - 4px); left: 0; right: 0; height: 8px; background: #111; }
-.pokeball-center { position: absolute; top: 50%; left: 50%; width: 28px; height: 28px; z-index: 2; transform: translate(-50%, -50%); background: #fff; border: 6px solid #111; border-radius: 50%; }
+.pokeball-center { position: absolute; top: 50%; left: 50%; width: 34px; height: 34px; z-index: 2; transform: translate(-50%, -50%); background: #fff; border: 7px solid #111; border-radius: 50%; }
 
 .binder-nav { display: flex; align-items: center; gap: 18px; }
 .binder-nav .page-label { color: #777; font-size: 0.82rem; text-align: center; }

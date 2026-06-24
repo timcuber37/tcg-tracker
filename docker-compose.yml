@@ -1,4 +1,4 @@
-# PokéCollect — Java/Spring backend + React (nginx) frontend.
+# TCGTracker — Java/Spring backend + React (nginx) frontend.
 # Postgres is hosted on Supabase. One backend image runs as three roles
 # (web / consumer / sync) selected by SPRING_PROFILES_ACTIVE.
 #
@@ -62,7 +62,7 @@ services:
     image: cassandra:4
     restart: unless-stopped
     environment:
-      CASSANDRA_CLUSTER_NAME: pokecollect
+      CASSANDRA_CLUSTER_NAME: tcgtracker
       CASSANDRA_DC: datacenter1
     volumes:
       - cassandra_data:/var/lib/cassandra
@@ -91,7 +91,7 @@ services:
 
   web:
     build: ./backend
-    image: pokecollect-backend:latest
+    image: tcgtracker-backend:latest
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -114,7 +114,7 @@ services:
     networks: [pokecollect]
 
   consumer:
-    image: pokecollect-backend:latest
+    image: tcgtracker-backend:latest
     restart: unless-stopped
     env_file: .env
     environment:
@@ -132,7 +132,7 @@ services:
     networks: [pokecollect]
 
   sync:
-    image: pokecollect-backend:latest
+    image: tcgtracker-backend:latest
     restart: unless-stopped
     env_file: .env
     environment:
