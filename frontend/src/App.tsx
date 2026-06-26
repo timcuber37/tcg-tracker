@@ -6,6 +6,7 @@ import AuthModal from './components/AuthModal'
 import Home from './pages/Home'
 import Collection from './pages/Collection'
 import Market from './pages/Market'
+import Scan from './pages/Scan'
 
 export default function App() {
   const [authOpen, setAuthOpen] = useState(false)
@@ -18,6 +19,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home onSignIn={() => setAuthOpen(true)} />} />
             <Route path="/collection" element={<Collection />} />
+            <Route path="/scan" element={<Scan />} />
             <Route path="/market" element={<Market />} />
           </Routes>
         </main>

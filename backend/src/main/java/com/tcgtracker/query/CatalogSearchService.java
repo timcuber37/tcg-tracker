@@ -82,6 +82,23 @@ public class CatalogSearchService {
         return new SearchResponse(results, totalCount, page, totalPages, PAGE_SIZE);
     }
 
+    /**
+     * Cards whose name contains {@code fragment} (case-insensitive), excluding
+     * Energy. Used by card-scan matching to gather candidates by collector number
+     * (which the catalog stores inside card_name, e.g. "Xerneas - 091/086") or by
+     * Pokémon name. Returns up to {@code limit} rows; empty list for a blank fragment.
+     */
+    public List<CardDto> findByCardNameContains(String fragment, int limit) {
+        if (fragment == null || fragment.isBlank()) {
+            return List.of();
+        }
+        return pg.query(
+            "SELECT pokewallet_id, card_name, set_name, rarity, card_type, market_price_usd " +
+            "FROM catalog_embeddings WHERE card_type NOT ILIKE 'Energy%' AND card_name ILIKE ? " +
+            "ORDER BY market_price_usd DESC NULLS LAST, card_name LIMIT ?",
+            CARD_MAPPER, "%" + fragment + "%", limit);
+    }
+
     /** Distinct set names, optionally limited to sets containing matches for {@code query}. */
     public List<String> setNames(String query) {
         if (query != null && !query.isBlank()) {

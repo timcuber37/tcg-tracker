@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { api, type CollectionResponse, cardImageUrl, onCardImageError } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import Binder from '../components/Binder'
@@ -73,9 +73,12 @@ export default function Collection() {
       </div>
 
       <div className="collection-controls">
-        <div className="view-toggle">
-          <button className={view === 'grid' ? 'active' : ''} onClick={() => setView('grid')}>Collection</button>
-          <button className={view === 'binder' ? 'active' : ''} onClick={() => setView('binder')}>Binder</button>
+        <div className="controls-left">
+          <div className="view-toggle">
+            <button className={view === 'grid' ? 'active' : ''} onClick={() => setView('grid')}>Collection</button>
+            <button className={view === 'binder' ? 'active' : ''} onClick={() => setView('binder')}>Binder</button>
+          </div>
+          <Link to="/scan" className="btn btn-secondary scan-link">Scan a card</Link>
         </div>
 
         {view === 'grid' && cards.length > 1 && (

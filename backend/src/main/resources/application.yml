@@ -58,6 +58,12 @@ spring:
           jwk-set-uri: ${SUPABASE_URL}/auth/v1/.well-known/jwks.json
           jws-algorithms: ES256   # Supabase signs access tokens with ES256, not the RS256 default
 
+  # Card-scan uploads (webcam JPEG) — raise the 1MB default.
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
 server:
   port: 8080
 
@@ -78,6 +84,12 @@ supabase:
 pokewallet:
   api-key: ${POKEWALLET_API_KEY:}
   base-url: https://api.pokewallet.io
+
+# ── Google Cloud Vision OCR (card scanning) ──────────────────────────────────
+google:
+  vision:
+    api-key: ${GOOGLE_VISION_API_KEY:}
+    endpoint: https://vision.googleapis.com/v1/images:annotate
 
 # ── Profile-specific overrides ───────────────────────────────────────────────
 # The consumer (@KafkaListener) and sync (@Scheduled) roles are headless — they

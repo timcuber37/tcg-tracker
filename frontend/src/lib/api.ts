@@ -81,6 +81,22 @@ export interface BinderResponse {
   pageCount: number
 }
 
+export interface ParsedCard {
+  name: string | null
+  collectorNumber: string | null
+  setCode: string | null
+}
+
+export interface ScanCandidate {
+  card: CardDto
+  confidence: number
+}
+
+export interface ScanResponse {
+  candidates: ScanCandidate[]
+  parsed: ParsedCard
+}
+
 export const cardImageUrl = (id: string, size: 'low' | 'high' = 'low') =>
   `${BASE.replace('/api', '')}/card-image/${id}?size=${size}`
 
@@ -124,6 +140,16 @@ export const api = {
     post<{ collectionId: string }>('/commands/add-copy', { pokewalletId, condition }),
   removeCard: (collectionId: string) =>
     post<void>('/commands/remove-card', { collectionId }),
+
+  // Card scanning (OCR → catalog match). Multipart: let the browser set the
+  // multipart boundary, so we send only the Authorization header.
+  scan: async (image: Blob): Promise<ScanResponse> => {
+    const form = new FormData()
+    form.append('file', image, 'scan.jpg')
+    const res = await fetch(`${BASE}/scan`, { method: 'POST', headers: await authHeaders(), body: form })
+    if (!res.ok) throw new Error(`POST /scan → ${res.status}`)
+    return res.json() as Promise<ScanResponse>
+  },
 
   // Binder
   binder: () => get<BinderResponse>('/binder'),
