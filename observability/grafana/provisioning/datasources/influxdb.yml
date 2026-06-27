@@ -1,0 +1,15 @@
+# Auto-provisioned InfluxDB datasource (InfluxQL / v1 API). The fixed uid lets the
+# committed dashboard reference it without a manual wire-up after first boot.
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB
+    uid: influxdb
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    database: ${INFLUX_DB:tcgtracker}
+    isDefault: true
+    jsonData:
+      dbName: ${INFLUX_DB:tcgtracker}
+      httpMode: GET

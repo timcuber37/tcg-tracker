@@ -67,12 +67,22 @@ spring:
 server:
   port: 8080
 
-# Expose health for container probes.
+# Expose health for container probes + metrics; push Micrometer metrics to InfluxDB.
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics
+  # Influx export is off by default so local dev runs and tests don't try to push to
+  # a non-existent server. docker-compose sets INFLUX_ENABLED=true + INFLUX_URI.
+  influx:
+    metrics:
+      export:
+        enabled: ${INFLUX_ENABLED:false}
+        uri: ${INFLUX_URI:http://localhost:8086}
+        db: ${INFLUX_DB:tcgtracker}
+        auto-create-db: true
+        step: ${INFLUX_STEP:10s}
 
 # ── Supabase (used from Phase 2 onward) ──────────────────────────────────────
 supabase:

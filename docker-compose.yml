@@ -87,6 +87,42 @@ services:
       "until cqlsh cassandra -f /schema.cql; do echo 'CQL not ready, retrying...'; sleep 5; done"]
     networks: [tcgtracker]
 
+  # ── Observability (Micrometer → InfluxDB → Grafana) ────────────────────────
+
+  # InfluxDB 1.8: Micrometer's Influx registry pushes line-protocol to /write?db=…
+  # (v1 API — no token/org/bucket needed). Auth disabled for a local dev stack.
+  influxdb:
+    image: influxdb:1.8
+    restart: unless-stopped
+    environment:
+      INFLUXDB_DB: ${INFLUX_DB:-tcgtracker}
+      INFLUXDB_HTTP_AUTH_ENABLED: "false"
+    volumes:
+      - influxdb_data:/var/lib/influxdb
+    ports:
+      - "8086:8086"
+    networks: [tcgtracker]
+
+  # Grafana, pre-provisioned with the InfluxDB datasource + the TCGTracker dashboard
+  # (committed under ./observability) so it comes up populated. Host port 3001 to
+  # avoid clashing with the frontend on 3000.
+  grafana:
+    image: grafana/grafana:11.3.0
+    restart: unless-stopped
+    depends_on:
+      - influxdb
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    networks: [tcgtracker]
+
   # ── Backend (one image, three roles) ───────────────────────────────────────
 
   web:
@@ -102,6 +138,8 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       CASSANDRA_HOSTS: cassandra
       IMAGE_CACHE_DIR: /app/static/cards
+      INFLUX_ENABLED: "true"
+      INFLUX_URI: http://influxdb:8086
     volumes:
       - card_images:/app/static/cards
     depends_on:
@@ -122,6 +160,8 @@ services:
       MYSQL_HOST: mysql
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       CASSANDRA_HOSTS: cassandra
+      INFLUX_ENABLED: "true"
+      INFLUX_URI: http://influxdb:8086
     depends_on:
       web:
         condition: service_started
@@ -140,6 +180,8 @@ services:
       MYSQL_HOST: mysql
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       CASSANDRA_HOSTS: cassandra
+      INFLUX_ENABLED: "true"
+      INFLUX_URI: http://influxdb:8086
     depends_on:
       web:
         condition: service_started
@@ -168,6 +210,8 @@ volumes:
   mysql_data:
   cassandra_data:
   card_images:       # persists the /card-image proxy cache across restarts
+  influxdb_data:     # metrics time-series
+  grafana_data:      # Grafana state (dashboards provisioned read-only from ./observability)
 
 # ── Network ──────────────────────────────────────────────────────────────────
 

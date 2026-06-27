@@ -1,0 +1,114 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "title": "TCGTracker — Service Metrics",
+  "uid": "tcgtracker",
+  "tags": ["tcgtracker"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "time": { "from": "now-1h", "to": "now" },
+  "refresh": "10s",
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Commands handled / interval (by type)",
+      "description": "Micrometer counter tcg.commands → measurement tcg_commands.",
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 40 } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"value\") FROM \"tcg_commands\" WHERE $timeFilter GROUP BY time($__interval), \"type\" fill(0)"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Read-model projections / interval (by event_type)",
+      "description": "Micrometer counter tcg.projections → measurement tcg_projections (consumer role).",
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 40 } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"value\") FROM \"tcg_projections\" WHERE $timeFilter GROUP BY time($__interval), \"event_type\" fill(0)"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Price-fetch latency (PokéWallet enrichment)",
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "alias": "mean",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"mean\") FROM \"pokewallet_price_fetch\" WHERE $timeFilter GROUP BY time($__interval) fill(null)"
+        },
+        {
+          "refId": "B",
+          "alias": "p95",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"value\") FROM \"pokewallet_price_fetch_percentile\" WHERE \"phi\" = '0.95' AND $timeFilter GROUP BY time($__interval) fill(null)"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Catalog search latency (mean / p95)",
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "alias": "mean",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"mean\") FROM \"catalog_search\" WHERE \"role\" = 'web' AND $timeFilter GROUP BY time($__interval) fill(null)"
+        },
+        {
+          "refId": "B",
+          "alias": "p95",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"value\") FROM \"catalog_search_percentile\" WHERE \"phi\" = '0.95' AND $timeFilter GROUP BY time($__interval) fill(null)"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "JVM heap used (by role)",
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"value\") FROM \"jvm_memory_used\" WHERE (\"area\" = 'heap') AND $timeFilter GROUP BY time($__interval), \"role\" fill(null)"
+        }
+      ]
+    }
+  ]
+}

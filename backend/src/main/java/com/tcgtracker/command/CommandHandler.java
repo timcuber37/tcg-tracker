@@ -15,6 +15,8 @@ import com.tcgtracker.events.EventPublisher;
 import com.tcgtracker.external.PriceEnrichmentService;
 import com.tcgtracker.query.CatalogSearchService;
 
+import io.micrometer.core.instrument.MeterRegistry;
+
 /**
  * Write side: persists to the MySQL source of truth and publishes a Kafka event
  * so the read models can project it. Ports commands/handlers.py.
@@ -32,15 +34,17 @@ public class CommandHandler {
     private final EventPublisher events;
     private final CatalogSearchService catalog;
     private final PriceEnrichmentService priceEnrichment;
+    private final MeterRegistry metrics;
 
     public CommandHandler(CardRepository cards, CollectionRepository collections,
                           EventPublisher events, CatalogSearchService catalog,
-                          PriceEnrichmentService priceEnrichment) {
+                          PriceEnrichmentService priceEnrichment, MeterRegistry metrics) {
         this.cards = cards;
         this.collections = collections;
         this.events = events;
         this.catalog = catalog;
         this.priceEnrichment = priceEnrichment;
+        this.metrics = metrics;
     }
 
     /** Add a card from a search result. card_id reuses the PokéWallet ID (created lazily). */
@@ -60,6 +64,7 @@ public class CommandHandler {
 
         events.publish(CardAddedToCollection.of(
             userId, pokewalletId, cardName, setName, rarity, normalize(condition), collectionId, marketPriceUsd));
+        metrics.counter("tcg.commands", "type", "add").increment();
         return collectionId;
     }
 
@@ -88,6 +93,7 @@ public class CommandHandler {
 
         collections.deleteById(collectionId);
         events.publish(CardRemovedFromCollection.of(userId, cardId, cardName, collectionId));
+        metrics.counter("tcg.commands", "type", "remove").increment();
         return true;
     }
 

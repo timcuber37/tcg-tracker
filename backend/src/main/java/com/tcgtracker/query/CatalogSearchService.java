@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -12,6 +13,9 @@ import org.springframework.stereotype.Service;
 
 import com.tcgtracker.query.dto.CardDto;
 import com.tcgtracker.query.dto.SearchResponse;
+
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 
 /**
  * Read-side catalog search against the Supabase Postgres {@code catalog_embeddings}
@@ -24,9 +28,17 @@ public class CatalogSearchService {
     public static final int PAGE_SIZE = 24;
 
     private final JdbcTemplate pg;
+    private final Timer searchTimer;
 
-    public CatalogSearchService(@Qualifier("postgresJdbcTemplate") JdbcTemplate postgresJdbcTemplate) {
+    public CatalogSearchService(@Qualifier("postgresJdbcTemplate") JdbcTemplate postgresJdbcTemplate,
+                                MeterRegistry metrics) {
         this.pg = postgresJdbcTemplate;
+        // Times the paginated catalog search (count + page query against Postgres),
+        // with client-side percentiles so Grafana can chart p95/p99.
+        this.searchTimer = Timer.builder("catalog.search")
+            .description("Paginated catalog search latency (Postgres count + page query)")
+            .publishPercentiles(0.5, 0.95, 0.99)
+            .register(metrics);
     }
 
     private static final RowMapper<CardDto> CARD_MAPPER = (rs, n) -> {
@@ -43,6 +55,11 @@ public class CatalogSearchService {
 
     /** Paginated search by card name and/or set. Energy cards are excluded. */
     public SearchResponse search(String query, String setName, int page) {
+        Supplier<SearchResponse> op = () -> doSearch(query, setName, page);
+        return searchTimer.record(op);
+    }
+
+    private SearchResponse doSearch(String query, String setName, int page) {
         if ((query == null || query.isBlank()) && (setName == null || setName.isBlank())) {
             return new SearchResponse(List.of(), 0, page, 0, PAGE_SIZE);
         }
