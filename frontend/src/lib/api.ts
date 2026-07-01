@@ -61,6 +61,15 @@ export interface CollectionResponse {
   totalValue: number
 }
 
+export interface RefreshStatus {
+  state: 'started' | 'running' | 'cooling' | 'idle'
+  cooldownRemainingSeconds: number
+  setsRefreshed: number | null
+  setsUnmatched: number | null
+  cardsUpdated: number | null
+  apiCalls: number | null
+}
+
 export interface UserDto {
   userId: string
   username: string
@@ -126,6 +135,17 @@ export const api = {
   me: () => get<UserDto>('/users/me'),
   syncUser: () => post<UserDto>('/users/sync', {}),
   collection: () => get<CollectionResponse>('/collection'),
+  // Kicks off a background refresh and returns immediately. 429 (cooldown) carries
+  // a normal status body, so treat it as success rather than throwing.
+  startRefresh: async (): Promise<RefreshStatus> => {
+    const res = await fetch(`${BASE}/collection/refresh-prices`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+    })
+    if (!res.ok && res.status !== 429) throw new Error(`POST /collection/refresh-prices → ${res.status}`)
+    return res.json() as Promise<RefreshStatus>
+  },
+  refreshStatus: () => get<RefreshStatus>('/collection/refresh-prices/status'),
   addFromSearch: (card: CardDto, condition = 'Near Mint') =>
     post<{ collectionId: string }>('/commands/add-from-search', {
       pokewalletId: card.pokewalletId,

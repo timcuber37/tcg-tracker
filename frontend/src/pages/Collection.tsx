@@ -11,6 +11,8 @@ export default function Collection() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [data, setData] = useState<CollectionResponse | null>(null)
   const [busy, setBusy] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshMsg, setRefreshMsg] = useState<string | null>(null)
 
   const load = useCallback(() => {
     api.collection().then(setData).catch(() => setData(null))
@@ -27,6 +29,43 @@ export default function Collection() {
       load()
     } finally {
       setBusy(false)
+    }
+  }
+
+  // Refreshing every owned set takes minutes, so the backend runs it in the
+  // background: kick it off, then poll status until it finishes and reload.
+  const refreshPrices = async () => {
+    setRefreshing(true)
+    setRefreshMsg(null)
+    try {
+      const started = await api.startRefresh()
+      if (started.state === 'cooling') {
+        const mins = Math.max(1, Math.ceil(started.cooldownRemainingSeconds / 60))
+        setRefreshMsg(`Prices were refreshed recently — try again in ~${mins} min.`)
+        setRefreshing(false)
+        return
+      }
+      setRefreshMsg('Refreshing prices in the background — this can take a few minutes…')
+
+      // Poll until the run leaves the "running" state (cap ~10 min at 5s each).
+      for (let i = 0; i < 120; i++) {
+        await new Promise((r) => setTimeout(r, 5000))
+        const s = await api.refreshStatus()
+        if (s.state !== 'running') {
+          if (s.cardsUpdated != null) {
+            const n = s.setsRefreshed ?? 0
+            setRefreshMsg(`Updated ${s.cardsUpdated} card prices across ${n} set${n === 1 ? '' : 's'}.`)
+          } else {
+            setRefreshMsg('Prices refreshed.')
+          }
+          load()
+          break
+        }
+      }
+    } catch {
+      setRefreshMsg('Price refresh failed — try again later.')
+    } finally {
+      setRefreshing(false)
     }
   }
 
@@ -79,6 +118,11 @@ export default function Collection() {
             <button className={view === 'binder' ? 'active' : ''} onClick={() => setView('binder')}>Binder</button>
           </div>
           <Link to="/scan" className="btn btn-secondary scan-link">Scan a card</Link>
+          {view === 'grid' && cards.length > 0 && (
+            <button className="btn btn-secondary" disabled={refreshing} onClick={refreshPrices}>
+              {refreshing ? 'Refreshing…' : 'Refresh prices'}
+            </button>
+          )}
         </div>
 
         {view === 'grid' && cards.length > 1 && (
@@ -91,6 +135,10 @@ export default function Collection() {
           </div>
         )}
       </div>
+
+      {view === 'grid' && refreshMsg && (
+        <div className="card-meta" style={{ marginBottom: 12 }}>{refreshMsg}</div>
+      )}
 
       {view === 'binder' && <Binder />}
 
